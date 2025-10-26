@@ -3,6 +3,7 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
@@ -34,14 +35,23 @@ export class NotificationGateway
     }
   }
 
+  @SubscribeMessage('register')
+  handleRegister(client: Socket, payload: { userId: string }) {
+    console.log(`Registering user ${payload.userId} with socket ${client.id}`);
+    this.userSockets.set(payload.userId, client.id);
+  }
+
   registerUser(userId: string, socketId: string) {
     this.userSockets.set(userId, socketId);
   }
 
   sendNotification(userId: string, data: any) {
     const socketId = this.userSockets.get(userId);
+    console.log(`Sending notification to user ${userId}, socket ${socketId}`);
     if (socketId) {
       this.server.to(socketId).emit('notification', data);
+    } else {
+      console.log(`No socket found for user ${userId}`);
     }
   }
 }
