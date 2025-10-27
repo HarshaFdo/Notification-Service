@@ -4,8 +4,10 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { NotificationService } from './notification.service';
 
 @WebSocketGateway({
   cors: {
@@ -13,45 +15,36 @@ import { Server, Socket } from 'socket.io';
   },
 })
 export class NotificationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
 
-  private userSockets: Map<string, string> = new Map(); // userId -> socketId
+  constructor(private readonly notificationService: NotificationService) {}
 
+  afterInit(server: Server) {
+    this.notificationService.setServer(server);
+    console.log('WebSocket server initialized');
+  }
+  
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
-    // Remove from userSockets
-    for (const [userId, socketId] of this.userSockets.entries()) {
-      if (socketId === client.id) {
-        this.userSockets.delete(userId);
-        break;
-      }
-    }
+    this.notificationService.unregisterClient(client.id);
   }
 
   @SubscribeMessage('register')
-  handleRegister(client: Socket, payload: { userId: string }) {
-    console.log(`Registering user ${payload.userId} with socket ${client.id}`);
-    this.userSockets.set(payload.userId, client.id);
-  }
-
-  registerUser(userId: string, socketId: string) {
-    this.userSockets.set(userId, socketId);
-  }
-
-  sendNotification(userId: string, data: any) {
-    const socketId = this.userSockets.get(userId);
-    console.log(`Sending notification to user ${userId}, socket ${socketId}`);
-    if (socketId) {
-      this.server.to(socketId).emit('notification', data);
-    } else {
-      console.log(`No socket found for user ${userId}`);
-    }
+  handleRegister(
+    client: Socket,
+    payload: { sessionHash: string; userId: string },
+  ) {
+    this.notificationService.registerClient(
+      client.id,
+      payload.sessionHash,
+      payload.userId,
+    );
   }
 }
