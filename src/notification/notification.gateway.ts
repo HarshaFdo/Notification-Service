@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { NotificationService } from './notification.service';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
@@ -20,19 +21,20 @@ export class NotificationGateway
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(NotificationGateway.name);
   constructor(private readonly notificationService: NotificationService) {}
 
   afterInit(server: Server) {
     this.notificationService.setServer(server);
-    console.log('WebSocket server initialized');
+    this.logger.log('WebSocket server initialized');
   }
   
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+    this.logger.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
     this.notificationService.unregisterClient(client.id);
   }
 
