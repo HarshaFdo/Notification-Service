@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Server } from 'socket.io';
 
 @Injectable()
 export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
   private server: Server;
 
   // Mapping to sessionHash to [{ userId, socketId}] for multi-tab support per session.
@@ -25,7 +26,7 @@ export class NotificationService {
       this.sessionMap.set(sessionHash, [...existing, { userId, socketId }]);
     }
 
-    console.log(
+    this.logger.log(
       `Registered: sessionHash=${sessionHash}, userId=${userId}, socketId=${socketId}`,
     );
   }
@@ -46,11 +47,11 @@ export class NotificationService {
     const entry = entries.find((e) => e.userId === userId);
     if (entry && entry.socketId) {
       this.server.to(entry.socketId).emit('notification', data);
-      console.log(
+      this.logger.log(
         `Notification sent to sessionhash=${sessionHash}, userId=${userId}, socketId=${entry.socketId}`,
       );
     } else {
-      console.log(
+      this.logger.log(
         `No socket found for sessionhash=${sessionHash}, userId=${userId}`,
       );
     }
