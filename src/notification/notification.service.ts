@@ -6,53 +6,40 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
   private server: Server;
 
-  // Mapping to sessionHash to [{ userId, socketId}] for multi-tab support per session.
-  private sessionMap: Map<string, { userId: string; socketId: string }[]> =
-    new Map();
+  // Mapping to userId to socketId for multi-tab support per user.
+  private userMap: Map<string, string> = new Map();
 
   setServer(server: Server) {
     this.server = server;
   }
 
-  registerClient(socketId: string, sessionHash: string, userId: string) {
-    const existing = this.sessionMap.get(sessionHash) || [];
-
-    // Avoid duplicate registrations
-    if (
-      !existing.find(
-        (entry) => entry.userId === userId && entry.socketId === socketId,
-      )
-    ) {
-      this.sessionMap.set(sessionHash, [...existing, { userId, socketId }]);
-    }
-
-    this.logger.log(
-      `Registered: sessionHash=${sessionHash}, userId=${userId}, socketId=${socketId}`,
-    );
+  registerClient(socketId: string, userId: string) {
+    this.userMap.set(userId, socketId);
+    this.logger.log(`Registered client: userId=${userId}, socketId=${socketId}`);
   }
 
+    // Avoid duplicate registrations
+
   unregisterClient(socketId: string) {
-    for (const [sessionHash, entries] of this.sessionMap.entries()) {
-      const updated = entries.filter((entry) => entry.socketId !== socketId);
-      if (updated.length > 0) {
-        this.sessionMap.set(sessionHash, updated);
-      } else {
-        this.sessionMap.delete(sessionHash);
+    for (const [userId, entry] of this.userMap.entries()) {
+      if (entry === socketId) {
+        this.userMap.delete(userId);
+        this.logger.log(`Unregistered client: userId=${userId}, socketId=${socketId}`);
+        break;
       }
     }
   }
 
-  sendNotification(sessionHash: string, userId: string, data: any) {
-    const entries = this.sessionMap.get(sessionHash) || [];
-    const entry = entries.find((e) => e.userId === userId);
-    if (entry && entry.socketId) {
-      this.server.to(entry.socketId).emit('notification', data);
+  sendNotification(userId: string, data: any) {
+    const socketId = this.userMap.get(userId);
+    if (socketId) {
+      this.server.to(socketId).emit('notification', data);
       this.logger.log(
-        `Notification sent to sessionhash=${sessionHash}, userId=${userId}, socketId=${entry.socketId}`,
+        `Notification sent to userId=${userId}, socketId=${socketId}`,
       );
     } else {
       this.logger.log(
-        `No socket found for sessionhash=${sessionHash}, userId=${userId}`,
+        `No socket found for userId=${userId}`,
       );
     }
   }

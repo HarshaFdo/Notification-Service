@@ -6,9 +6,9 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Post('send')
-  async sendNotification(@Body() data: { userId: string; sessionHash: string; message: string; fileName?: string; filePath?: string }) {
-    const {userId, sessionHash, ...notificationData} = data
-    this.notificationService.sendNotification(sessionHash, userId, notificationData); 
+  async sendNotification(@Body() data: { userId: string; message: string; fileName?: string; filePath?: string }) {
+    const {userId,  ...notificationData} = data
+    this.notificationService.sendNotification(userId, notificationData); 
     return { success: true };
   }
 }

@@ -41,11 +41,10 @@ export class NotificationGateway
   @SubscribeMessage('register')
   handleRegister(
     client: Socket,
-    payload: { sessionHash: string; userId: string },
+    payload: { userId: string },
   ) {
     this.notificationService.registerClient(
       client.id,
-      payload.sessionHash,
       payload.userId,
     );
   }
