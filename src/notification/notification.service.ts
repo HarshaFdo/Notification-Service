@@ -14,17 +14,37 @@ export class NotificationService {
   }
 
   registerClient(socketId: string, userId: string) {
-    this.userMap.set(userId, socketId);
-    this.logger.log(`Registered client: userId=${userId}, socketId=${socketId}`);
-  }
+    const existingSocketId = this.userMap.get(userId);
 
-    // Avoid duplicate registrations
+    // Avoid duplicate registrations - same userId and same socketId
+    if (existingSocketId === socketId) {
+      this.logger.warn(
+        `Client already registered: userId=${userId}, socketId=${socketId} - Duplicate registration ignored`,
+      );
+      return;
+    }
+
+    // Log if replacing an existing socketId like during reconnection or page refresh
+    if (existingSocketId && existingSocketId !== socketId) {
+      this.logger.log(
+        `Replacing existing socketId for userId=${userId}:` +
+          `${existingSocketId} -> ${socketId}`,
+      );
+    }
+
+    this.userMap.set(userId, socketId);
+    this.logger.log(
+      `Registered client: userId=${userId}, socketId=${socketId}`,
+    );
+  }
 
   unregisterClient(socketId: string) {
     for (const [userId, entry] of this.userMap.entries()) {
       if (entry === socketId) {
         this.userMap.delete(userId);
-        this.logger.log(`Unregistered client: userId=${userId}, socketId=${socketId}`);
+        this.logger.log(
+          `Unregistered client: userId=${userId}, socketId=${socketId}`,
+        );
         break;
       }
     }
@@ -38,9 +58,7 @@ export class NotificationService {
         `Notification sent to userId=${userId}, socketId=${socketId}`,
       );
     } else {
-      this.logger.log(
-        `No socket found for userId=${userId}`,
-      );
+      this.logger.log(`No socket found for userId=${userId}`);
     }
   }
 }
